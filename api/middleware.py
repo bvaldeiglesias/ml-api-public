@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+import redis
+import uuid
+import json
+import time
 
 ########################################################################
 # COMPLETAR AQUI: Crear conexion a redis y asignarla a la variable "db".
 ########################################################################
-db = None
+db = redis.Redis(host='redis', port=6379)
 ########################################################################
 
 
@@ -39,7 +43,11 @@ def model_predict(text_data):
     #       string.
     # Luego utilice rpush de Redis para encolar la tarea.
     #################################################################
-    raise NotImplementedError
+    task_id = str(uuid.uuid4())
+    task = {"id": task_id, "text": text_data}
+
+    db.rpush("ml_tasks", json.dumps(task))
+
     #################################################################
 
     # Iterar hasta recibir el resultado
@@ -53,7 +61,17 @@ def model_predict(text_data):
         #     3. Si obtuvimos respuesta, extraiga la predicción y el
         #        score para ser devueltos como salida de esta función.
         #################################################################
-        raise NotImplementedError
-        #################################################################
+        result = db.get(task_id)
+        if result:
+            response = json.loads(result.decode('utf-8'))
+            prediction = response["prediction"]
+            score = response["score"]
 
+            db.delete(task_id)
+            break
+
+        time.sleep(1)
+        #################################################################
+    
+    print(json.dumps({"prediction":prediction}))
     return prediction, score
