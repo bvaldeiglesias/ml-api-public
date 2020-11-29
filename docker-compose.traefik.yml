@@ -1,7 +1,6 @@
-version: "3.3"
+version: "3.7"
 
 services:
-
   traefik:
     image: "traefik:v2.3"
     container_name: "traefik"
@@ -9,18 +8,36 @@ services:
       #- "--log.level=DEBUG"
       - "--api.insecure=true"
       - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.exposedbydefault=true"
       - "--entrypoints.web.address=:80"
+      - "--providers.docker.swarmMode=true"
+      - "--providers.docker.watch=true"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker.network=main-net"
     ports:
       - "80:80"
       - "8080:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks: 
+      - main-net
+    deploy:
+      placement:
+          constraints:
+            - node.role == manager
 
   whoami:
     image: "traefik/whoami"
     container_name: "simple-service"
-    labels:
+    networks: 
+      - main-net
+    deploy:
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
       - "traefik.http.routers.whoami.entrypoints=web"
+
+networks: 
+  main-net:
+    driver: overlay
+    name: main-net

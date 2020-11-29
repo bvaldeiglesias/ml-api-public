@@ -1,13 +1,13 @@
-version: "3.2"
+version: "3.7"
 services:
   api:
     image: flask_api
     container_name: ml_api
     build:
       context: ./api
-    command: "gunicorn --workers=8 --bind 0.0.0.0:5000 app:app"
+    command: "gunicorn --workers=1 --bind :5000 app:app"
     ports:
-      - "80:5000"
+      - "5000:5000"
     environment:
       - FLASK_DEBUG=1
     depends_on:
@@ -21,9 +21,25 @@ services:
      options:
        gelf-address: "udp://localhost:12201"
        tag: "api-logs"
+    networks: 
+      - main-net
+    deploy:
+      labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.localhost`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      # - "traefik.http.routers.api.service=api@internal"
+      - "traefik.http.services.api.loadbalancer.server.port=5000"
 
   redis:
     image: redis:5.0.6
+    networks: 
+        - main-net
+    # deploy:
+    #   labels:
+    #     - "traefik.enable=true"
+    #     - "traefik.http.routers.redis.rule=Host(`redis.localhost`)"
+    #     - "traefik.http.routers.redis.entrypoints=web"
 
   model:
     image: ml_service
@@ -33,3 +49,15 @@ services:
     command: "python3 /src/ml_service.py"
     depends_on:
       - redis
+    networks: 
+      - main-net
+    # deploy:
+    #   labels:
+    #     - "traefik.enable=true"
+    #     - "traefik.http.routers.model.rule=Host(`model.localhost`)"
+    #     - "traefik.http.routers.model.entrypoints=web"
+
+
+networks: 
+  main-net:
+    external: true
